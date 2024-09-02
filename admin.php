@@ -8,23 +8,22 @@ if (isset($_SESSION['admin_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    include 'includes/db_connect.php';
+    include 'includes/db_connect.php'; // Ensure this file sets up PDO for PostgreSQL
 
     $email = strtolower(trim($_POST['email']));
     $password = trim($_POST['password']);
 
     // Prepare and execute the query to get admin details and email
-    $stmt = $db->prepare("
+    $sql = "
         SELECT a.admin_id, u.pass, u.email
         FROM admin a
         JOIN users u ON a.user_id = u.user_id
         WHERE u.email = ?
-    ");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$email]);
 
-    if ($row = $result->fetch_assoc()) {
+    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         // Verify password
         if (password_verify($password, $row['pass'])) {
             $_SESSION['admin_id'] = $row['admin_id'];
@@ -57,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <main>
         <div class="container py-5" style="position: relative;">
-            <form id="adminLoginForm" class="w-lg-50 w-md-75 mx-md-auto" action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" novalidate>
+            <form id="adminLoginForm" class="w-lg-50 w-md-75 mx-md-auto" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" novalidate>
                 <div class="mb-5">
                     <h2 class="h3 text-primary font-weight-normal">
                         Admin Login
@@ -116,8 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         email: 'Please specify a valid email address.'
                     }
                 }
-            })
-        })
+            });
+        });
     </script>
 </body>
 

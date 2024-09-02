@@ -1,11 +1,12 @@
 <?php
 session_start();
 
-include_once 'includes/db_connect.php';
-
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php?back=edit_event.php');
+    exit;
 }
+
+include_once 'includes/db_connect.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $event_id = $_POST['event_id'];
@@ -14,23 +15,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $event_fee = $_POST['event_fee'];
     $category_id = $_POST['category_id'];
 
-    $result = $db->query("UPDATE events SET event_name = '$event_name', event_type = '$event_type', event_fee = '$event_fee', category_id = '$category_id' WHERE event_id = '$event_id'");
+    try {
+        $stmt = $pdo->prepare("UPDATE events SET event_name = :event_name, event_type = :event_type, event_fee = :event_fee, category_id = :category_id WHERE event_id = :event_id");
+        $stmt->execute([
+            'event_name' => $event_name,
+            'event_type' => $event_type,
+            'event_fee' => $event_fee,
+            'category_id' => $category_id,
+            'event_id' => $event_id
+        ]);
 
-    if ($result) {
-        header('Location: events.php');
-    } else {
-        $error_message = $db->error;
+        if ($stmt->rowCount() > 0) {
+            header('Location: events.php');
+        } else {
+            $error_message = 'Failed to update event.';
+        }
+    } catch (PDOException $e) {
+        $error_message = 'Database error: ' . $e->getMessage();
     }
 }
 
 if (isset($_GET['id'])) {
     $event_id = $_GET['id'];
-    $result = $db->query("SELECT * FROM events WHERE event_id = '$event_id'");
-    if ($result) {
-        if ($row = $result->fetch_assoc()) {
-            $event_date = new DateTime($row['event_date']);
-?>
 
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM events WHERE event_id = :event_id");
+        $stmt->execute(['event_id' => $event_id]);
+        $event = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($event) {
+            $event_date = new DateTime($event['event_date']);
+            ?>
             <!DOCTYPE html>
             <html lang="en">
 
@@ -49,26 +64,26 @@ if (isset($_GET['id'])) {
                     <div class="bg-light py-5">
                         <div class="container" style="position: relative;">
 
-                            <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" novalidate>
+                            <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" novalidate>
                                 <div class="mb-4">
-                                    <h2 class="h4">Edit event</h1>
+                                    <h2 class="h4">Edit event</h2>
                                 </div>
 
-                                <input type="hidden" name="event_id" value="<?php echo $row['event_id']; ?>">
+                                <input type="hidden" name="event_id" value="<?php echo htmlspecialchars($event['event_id']); ?>">
 
                                 <div class="row mb-4">
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label for="event_name" class="form-label">Event name</label>
-                                            <input type="text" name="event_name" id="event_name" class="form-control" value="<?php echo $row['event_name']; ?>">
+                                            <input type="text" name="event_name" id="event_name" class="form-control" value="<?php echo htmlspecialchars($event['event_name']); ?>">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label for="event_type" class="form-label">Event type</label>
                                             <select name="event_type" id="event_type" class="form-control custom-select">
-                                                <option value="Individual">Individual</option>
-                                                <option value="Group">Group</option>
+                                                <option value="Individual" <?php echo $event['event_type'] == 'Individual' ? 'selected' : ''; ?>>Individual</option>
+                                                <option value="Group" <?php echo $event['event_type'] == 'Group' ? 'selected' : ''; ?>>Group</option>
                                             </select>
                                         </div>
                                     </div>
@@ -80,18 +95,13 @@ if (isset($_GET['id'])) {
                                             <label for="event_month" class="form-label">Event date</label>
                                             <select name="event_month" id="event_month" class="form-control custom-select">
                                                 <option value="" disabled>Select month</option>
-                                                <option value="01">January</option>
-                                                <option value="02">Febuary</option>
-                                                <option value="03">March</option>
-                                                <option value="04">April</option>
-                                                <option value="05">May</option>
-                                                <option value="06">June</option>
-                                                <option value="07">July</option>
-                                                <option value="08">August</option>
-                                                <option value="09">September</option>
-                                                <option value="10">October</option>
-                                                <option value="11">November</option>
-                                                <option value="12">December</option>
+                                                <?php
+                                                for ($i = 1; $i <= 12; $i++) {
+                                                    $month = str_pad($i, 2, '0', STR_PAD_LEFT);
+                                                    $month_name = DateTime::createFromFormat('!m', $i)->format('F');
+                                                    echo "<option value=\"$month\" " . ($event_date->format('m') == $month ? 'selected' : '') . ">$month_name</option>";
+                                                }
+                                                ?>
                                             </select>
                                         </div>
                                     </div>
@@ -100,37 +110,12 @@ if (isset($_GET['id'])) {
                                             <label for="event_date" class="form-label">&nbsp;</label>
                                             <select name="event_date" id="event_date" class="form-control custom-select">
                                                 <option value="" disabled>Select date</option>
-                                                <option value="01">1</option>
-                                                <option value="02">2</option>
-                                                <option value="03">3</option>
-                                                <option value="04">4</option>
-                                                <option value="05">5</option>
-                                                <option value="06">6</option>
-                                                <option value="07">7</option>
-                                                <option value="08">8</option>
-                                                <option value="09">9</option>
-                                                <option value="10">10</option>
-                                                <option value="11">11</option>
-                                                <option value="12">12</option>
-                                                <option value="13">13</option>
-                                                <option value="14">14</option>
-                                                <option value="15">15</option>
-                                                <option value="16">16</option>
-                                                <option value="17">17</option>
-                                                <option value="18">18</option>
-                                                <option value="19">19</option>
-                                                <option value="20">20</option>
-                                                <option value="21">21</option>
-                                                <option value="22">22</option>
-                                                <option value="23">23</option>
-                                                <option value="24">24</option>
-                                                <option value="25">25</option>
-                                                <option value="26">26</option>
-                                                <option value="27">27</option>
-                                                <option value="28">28</option>
-                                                <option value="29">29</option>
-                                                <option value="30">30</option>
-                                                <option value="31">31</option>
+                                                <?php
+                                                for ($i = 1; $i <= 31; $i++) {
+                                                    $day = str_pad($i, 2, '0', STR_PAD_LEFT);
+                                                    echo "<option value=\"$day\" " . ($event_date->format('d') == $day ? 'selected' : '') . ">$i</option>";
+                                                }
+                                                ?>
                                             </select>
                                         </div>
                                     </div>
@@ -139,8 +124,12 @@ if (isset($_GET['id'])) {
                                             <label for="event_year" class="form-label">&nbsp;</label>
                                             <select name="event_year" id="event_year" class="form-control custom-select">
                                                 <option value="" disabled>Select year</option>
-                                                <option value="2024" <?php ?>>2024</option>
-                                                <option value="2025">2025</option>
+                                                <?php
+                                                $current_year = date('Y');
+                                                for ($i = $current_year; $i <= $current_year + 1; $i++) {
+                                                    echo "<option value=\"$i\" " . ($event_date->format('Y') == $i ? 'selected' : '') . ">$i</option>";
+                                                }
+                                                ?>
                                             </select>
                                         </div>
                                     </div>
@@ -148,86 +137,84 @@ if (isset($_GET['id'])) {
                                         <div class="form-group">
                                             <label for="event_fee" class="form-label">Event fee</label>
                                             <?php
-                                            $participants = $db->query("SELECT * FROM registrations WHERE event_id = '$event_id'");
+                                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM registrations WHERE event_id = :event_id");
+                                            $stmt->execute(['event_id' => $event_id]);
+                                            $participants_count = $stmt->fetchColumn();
                                             ?>
-                                            <input type="number" name="event_fee" id="event_fee" class="form-control" min="1" value="<?php echo $row['event_fee']; ?>" <?php echo $participants->num_rows > 0 ? 'disabled' : ''; ?>>
+                                            <input type="number" name="event_fee" id="event_fee" class="form-control" min="1" value="<?php echo htmlspecialchars($event['event_fee']); ?>" <?php echo $participants_count > 0 ? 'disabled' : ''; ?>>
                                         </div>
                                     </div>
                                 </div>
-                </main>
 
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="category_id" class="form-label">Category</label>
-                            <select name="category_id" id="category_id" class="form-control custom-select">
-                                <option value="" disabled>Select category</option>
-                                <?php
-                                $categories = $db->query("SELECT * FROM categories ORDER BY category_name");
-                                if ($categories) {
-                                    while ($category_row = $categories->fetch_assoc()) { ?>
-                                        <option value="<?php echo $category_row['category_id']; ?>" <?php echo $category_row['category_id'] == $row['category_id'] ? 'selected' : ''; ?>>
-                                            <?php echo $category_row['category_name']; ?>
-                                        </option>
-                                <?php }
-                                }
-                                ?>
-                            </select>
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="category_id" class="form-label">Category</label>
+                                            <select name="category_id" id="category_id" class="form-control custom-select">
+                                                <option value="" disabled>Select category</option>
+                                                <?php
+                                                $stmt = $pdo->query("SELECT * FROM categories ORDER BY category_name");
+                                                while ($category = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                                    echo "<option value=\"" . htmlspecialchars($category['category_id']) . "\" " . ($category['category_id'] == $event['category_id'] ? 'selected' : '') . ">" . htmlspecialchars($category['category_name']) . "</option>";
+                                                }
+                                                ?>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="organiser_id" class="form-label">Organiser</label>
+                                            <select name="organiser_id" id="organiser_id" class="form-control custom-select">
+                                                <option value="" disabled>Select organiser</option>
+                                                <?php
+                                                $stmt = $pdo->query("SELECT * FROM organisers ORDER BY organiser_name");
+                                                while ($organiser = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                                    echo "<option value=\"" . htmlspecialchars($organiser['organiser_id']) . "\" " . ($organiser['organiser_id'] == $event['organiser_id'] ? 'selected' : '') . ">" . htmlspecialchars($organiser['organiser_name']) . "</option>";
+                                                }
+                                                ?>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <div class="form-group">
+                                            <label for="event_desc" class="form-label">Description</label>
+                                            <textarea name="event_desc" id="event_desc" rows="5" class="form-control"><?php echo htmlspecialchars($event['event_desc']); ?></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-sm-wide transition-3d-hover mr-1">Update</button>
+                                <a href="events.php" class="btn btn-secondary btn-sm-wide transition-3d-hover">Cancel</a>
+
+                            </form>
+
+                            <?php if (!empty($error_message)) : ?>
+                                <div class="alert alert-danger mt-4" role="alert">
+                                    <?php echo htmlspecialchars($error_message); ?>
+                                </div>
+                            <?php endif; ?>
+
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="organiser_id" class="form-label">Organiser</label>
-                            <select name="organiser_id" id="organiser_id" class="form-control custom-select">
-                                <option value="" disabled>Select organiser</option>
-                                <?php
-                                $organisers = $db->query("SELECT * FROM organisers ORDER BY organiser_name");
-                                if ($organisers) {
-                                    while ($organiser_row = $organisers->fetch_assoc()) { ?>
-                                        <option value="<?php echo $organiser_row['organiser_id']; ?>" <?php echo $organiser_row['organiser_id'] == $row['organiser_id'] ? 'selected' : ''; ?>>
-                                            <?php echo $organiser_row['organiser_name']; ?>
-                                        </option>
-                                <?php }
-                                }
-                                ?>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="form-group">
-                            <label for="event_desc" class="form-label">Description</label>
-                            <textarea name="event_desc" id="event_desc" rows="5" class="form-control">
-                            <?php echo $row['event_desc']; ?>
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-sm-wide transition-3d-hover mr-1">Add</button>
-                <a href="events.php" class="btn btn-secondary btn-sm-wide transition-3d-hover">Cancel</a>
-
-                </form>
-
-                <?php include 'includes/_error_toast.php'; ?>
-                </div>
-                </div>
                 </main>
 
                 <?php include 'includes/_scripts.php'; ?>
             </body>
 
             </html>
-
-<?php
+            <?php
         } else {
             header('Location: events.php?err=' . urlencode('No such event found.'));
+            exit;
         }
-    } else {
-        header('Location: events.php?err=' . urlencode('Something went wrong.'));
+    } catch (PDOException $e) {
+        header('Location: events.php?err=' . urlencode('Database error: ' . $e->getMessage()));
+        exit;
     }
 } else {
     header('Location: events.php');
+    exit;
 }

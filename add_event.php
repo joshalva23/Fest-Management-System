@@ -3,11 +3,12 @@ session_start();
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php?back=add_event.php');
+    exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    include 'includes/db_connect.php';
+include 'includes/db_connect.php'; // This will include the PDO connection setup
 
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $event_name = $_POST['event_name'];
     $event_type = $_POST['event_type'];
     $event_fee = $_POST['event_fee'];
@@ -16,11 +17,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $event_desc = $_POST['event_desc'];
     $event_date = $_POST['event_year'] . '-' . $_POST['event_month'] . '-' . $_POST['event_date'];
 
-    $result = $db->query("INSERT INTO events (event_name, event_type, event_fee, category_id, event_desc, event_date, organiser_id) VALUES ('$event_name', '$event_type', '$event_fee', '$category_id', '$event_desc', '$event_date', '$organiser_id')");
-    if ($result) {
+    // Prepare the SQL statement to prevent SQL injection
+    $query = 'INSERT INTO events (event_name, event_type, event_fee, category_id, event_desc, event_date, organiser_id) VALUES (:event_name, :event_type, :event_fee, :category_id, :event_desc, :event_date, :organiser_id)';
+
+    try {
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':event_name', $event_name);
+        $stmt->bindParam(':event_type', $event_type);
+        $stmt->bindParam(':event_fee', $event_fee, PDO::PARAM_INT);
+        $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
+        $stmt->bindParam(':organiser_id', $organiser_id, PDO::PARAM_INT);
+        $stmt->bindParam(':event_desc', $event_desc);
+        $stmt->bindParam(':event_date', $event_date);
+
+        $stmt->execute();
+
         header('Location: events.php');
-    } else {
-        $error_message = $db->error;
+        exit;
+    } catch (PDOException $e) {
+        $error_message = 'Registration failed: ' . $e->getMessage();
     }
 }
 ?>
@@ -44,26 +59,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         <div class="bg-light py-5">
             <div class="container" style="position: relative;">
-                <form id="newEventForm" action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" novalidate>
+                <form id="newEventForm" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" novalidate>
                     <div class="mb-4">
-                        <h2 class="h4">Create an event</h1>
+                        <h2 class="h4">Create an event</h2>
                     </div>
 
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="event_name" class="form-label">Event
-                                    name</label>
-                                <input type="text" name="event_name" id="event_name" class="form-control" placeholder="Event X">
+                                <label for="event_name" class="form-label">Event name</label>
+                                <input type="text" name="event_name" id="event_name" class="form-control" placeholder="Event X" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="event_type" class="form-label">Event
-                                    type</label>
-                                <select name="event_type" id="event_type" class="form-control custom-select">
-                                    <option value="Individual">Individual
-                                    </option>
+                                <label for="event_type" class="form-label">Event type</label>
+                                <select name="event_type" id="event_type" class="form-control custom-select" required>
+                                    <option value="Individual">Individual</option>
                                     <option value="Group">Group</option>
                                 </select>
                             </div>
@@ -74,81 +86,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="event_month" class="form-label">Event date</label>
-                                <select name="event_month" id="event_month" class="form-control custom-select">
-                                    <option value="" disabled>Select month
-                                    </option>
-                                    <option value="01">January</option>
-                                    <option value="02">Febuary</option>
-                                    <option value="03">March</option>
-                                    <option value="04">April</option>
-                                    <option value="05">May</option>
-                                    <option value="06">June</option>
-                                    <option value="07">July</option>
-                                    <option value="08">August</option>
-                                    <option value="09">September</option>
-                                    <option value="10">October</option>
-                                    <option value="11">November</option>
-                                    <option value="12" selected>December
-                                    </option>
+                                <select name="event_month" id="event_month" class="form-control custom-select" required>
+                                    <option value="" disabled>Select month</option>
+                                    <?php for ($month = 1; $month <= 12; $month++) : ?>
+                                        <option value="<?php echo str_pad($month, 2, '0', STR_PAD_LEFT); ?>">
+                                            <?php echo date('F', mktime(0, 0, 0, $month, 10)); ?>
+                                        </option>
+                                    <?php endfor; ?>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-2 col-6">
                             <div class="form-group">
                                 <label for="event_date" class="form-label">&nbsp;</label>
-                                <select name="event_date" id="event_date" class="form-control custom-select">
-                                    <option value="" disabled>Select date
-                                    </option>
-                                    <option value="01">1</option>
-                                    <option value="02">2</option>
-                                    <option value="03">3</option>
-                                    <option value="04">4</option>
-                                    <option value="05">5</option>
-                                    <option value="06">6</option>
-                                    <option value="07">7</option>
-                                    <option value="08">8</option>
-                                    <option value="09">9</option>
-                                    <option value="10">10</option>
-                                    <option value="11">11</option>
-                                    <option value="12">12</option>
-                                    <option value="13">13</option>
-                                    <option value="14">14</option>
-                                    <option value="15">15</option>
-                                    <option value="16">16</option>
-                                    <option value="17">17</option>
-                                    <option value="18" selected>18</option>
-                                    <option value="19">19</option>
-                                    <option value="20">20</option>
-                                    <option value="21">21</option>
-                                    <option value="22">22</option>
-                                    <option value="23">23</option>
-                                    <option value="24">24</option>
-                                    <option value="25">25</option>
-                                    <option value="26">26</option>
-                                    <option value="27">27</option>
-                                    <option value="28">28</option>
-                                    <option value="29">29</option>
-                                    <option value="30">30</option>
-                                    <option value="31">31</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-6">
-                            <div class="form-group">
-                                <label for="event_year" class="form-label">&nbsp;</label>
-                                <select name="event_year" id="event_year" class="form-control custom-select">
-                                    <option value="" disabled>Select year
-                                    </option>
-                                    <option value="2024" selected>2024</option>
-                                    <option value="2025">2025</option>
+                                <select name="event_date" id="event_date" class="form-control custom-select" required>
+                                    <option value="" disabled>Select date</option>
+                                    <?php for ($day = 1; $day <= 31; $day++) : ?>
+                                        <option value="<?php echo str_pad($day, 2, '0', STR_PAD_LEFT); ?>"><?php echo $day; ?></option>
+                                    <?php endfor; ?>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="form-group">
-                                <label for="event_fee" class="form-label">Event
-                                    fee</label>
-                                <input type="number" name="event_fee" id="event_fee" class="form-control" min="1" placeholder="100">
+                                <label for="event_year" class="form-label">&nbsp;</label>
+                                <select name="event_year" id="event_year" class="form-control custom-select" required>
+                                    <option value="" disabled>Select year</option>
+                                    <?php for ($year = date('Y'); $year <= date('Y') + 5; $year++) : ?>
+                                        <option value="<?php echo $year; ?>" <?php echo $year == date('Y') ? 'selected' : ''; ?>>
+                                            <?php echo $year; ?>
+                                        </option>
+                                    <?php endfor; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="event_fee" class="form-label">Event fee</label>
+                                <input type="number" name="event_fee" id="event_fee" class="form-control" min="1" placeholder="100" required>
                             </div>
                         </div>
                     </div>
@@ -157,20 +132,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="category_id" class="form-label">Category</label>
-                                <select name="category_id" id="category_id" class="form-control custom-select">
-                                    <option value="" disabled selected>Select
-                                        category</option>
+                                <select name="category_id" id="category_id" class="form-control custom-select" required>
+                                    <option value="" disabled selected>Select category</option>
                                     <?php
-                                    include 'includes/db_connect.php';
-
-                                    $result = $db->query('SELECT * FROM categories ORDER BY category_name');
-                                    if ($result) {
-                                        while ($row = $result->fetch_assoc()) { ?>
-                                            <option value="<?php echo $row['category_id']; ?>">
-                                                <?php echo $row['category_name']; ?>
-                                            </option>
+                                    $query = 'SELECT * FROM categories ORDER BY category_name';
+                                    $stmt = $pdo->query($query);
+                                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { ?>
+                                        <option value="<?php echo $row['category_id']; ?>">
+                                            <?php echo htmlspecialchars($row['category_name']); ?>
+                                        </option>
                                     <?php }
-                                    }
                                     ?>
                                 </select>
                             </div>
@@ -178,20 +149,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="organiser_id" class="form-label">Organiser</label>
-                                <select name="organiser_id" id="organiser_id" class="form-control custom-select">
-                                    <option value="" disabled selected>Select
-                                        organiser</option>
+                                <select name="organiser_id" id="organiser_id" class="form-control custom-select" required>
+                                    <option value="" disabled selected>Select organiser</option>
                                     <?php
-                                    include 'includes/db_connect.php';
-
-                                    $result = $db->query('SELECT * FROM organisers ORDER BY organiser_name');
-                                    if ($result) {
-                                        while ($row = $result->fetch_assoc()) { ?>
-                                            <option value="<?php echo $row['organiser_id']; ?>">
-                                                <?php echo $row['organiser_name']; ?>
-                                            </option>
+                                    $query = 'SELECT * FROM organisers ORDER BY organiser_name';
+                                    $stmt = $pdo->query($query);
+                                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { ?>
+                                        <option value="<?php echo $row['organiser_id']; ?>">
+                                            <?php echo htmlspecialchars($row['organiser_name']); ?>
+                                        </option>
                                     <?php }
-                                    }
                                     ?>
                                 </select>
                             </div>
@@ -202,17 +169,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="col-12">
                             <div class="form-group">
                                 <label for="event_desc" class="form-label">Description</label>
-                                <textarea name="event_desc" id="event_desc" rows="5" class="form-control"></textarea>
+                                <textarea name="event_desc" id="event_desc" rows="5" class="form-control" required></textarea>
                             </div>
                         </div>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-sm-wide transition-3d-hover mr-1">Add</button>
                     <a href="events.php" class="btn btn-secondary btn-sm-wide transition-3d-hover">Cancel</a>
-
                 </form>
 
-                <?php include 'includes/_error_toast.php'; ?>
+                <?php if (isset($error_message)) : ?>
+                    <div class="alert alert-danger mt-3">
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </main>
@@ -226,41 +196,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         required: true
                     },
                     event_type: {
-                        required: true,
-                        nowhitespace: true,
-                        lettersonly: true
+                        required: true
                     },
                     event_date: {
                         required: true,
                         digits: true
                     },
                     event_month: {
-                        required: true,
-                        digits: true
+                        required: true
                     },
                     event_year: {
                         required: true,
                         digits: true
                     },
-                    category_id: {
-                        required: true,
-                        digits: true
-                    },
-                    organiser_id: {
-                        required: true,
-                        digits: true
-                    },
                     event_fee: {
                         required: true,
-                        digits: true,
-                        min: 100
+                        number: true,
+                        min: 1
+                    },
+                    category_id: {
+                        required: true
+                    },
+                    organiser_id: {
+                        required: true
                     },
                     event_desc: {
                         required: true
                     }
                 }
             });
-        })
+        });
     </script>
 </body>
 

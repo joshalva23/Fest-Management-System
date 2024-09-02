@@ -7,33 +7,33 @@ if (isset($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    include 'includes/db_connect.php';
+    include 'includes/db_connect.php'; // This will include the PDO connection setup
 
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
 
     // Prepare the query
-    $stmt = $db->prepare("SELECT email, pass, full_name, status FROM users WHERE email = ?");
-    $stmt->bind_param("s", $email);
+    $query = 'SELECT email, pass, full_name, status FROM users WHERE email = :email';
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':email', $email);
     $stmt->execute();
-    $result = $stmt->get_result();
 
-    if ($row = $result->fetch_assoc()) {
+    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         // Verify password
         if (password_verify($password, $row['pass'])) {
-            if($row['status'] === 'approved'){
+            if ($row['status'] === 'approved') {
                 $_SESSION['user_id'] = $row['email'];
                 $_SESSION['user_name'] = $row['full_name'];
 
                 if (isset($_GET['back'])) {
-                    header('Location: ' . $_GET['back']);
+                    header('Location: ' . htmlspecialchars($_GET['back']));
                 } else {
                     header('Location: dashboard.php');
                 }
                 exit;
-            }else{
+            } else {
                 $error_message = 'You aren\'t approved yet';
-            }   
+            }
         } else {
             $error_message = 'Invalid email/password';
         }
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <main>
         <div class="container py-5" style="position: relative;">
-            <form class="w-lg-50 w-md-75 mx-md-auto" action="<?php echo isset($_GET['back']) ? $_SERVER['PHP_SELF'] . '?back=' . $_GET['back'] : $_SERVER['PHP_SELF']; ?><?php echo '' ?>" method="post">
+            <form class="w-lg-50 w-md-75 mx-md-auto" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?><?php echo isset($_GET['back']) ? '?back=' . htmlspecialchars($_GET['back']) : ''; ?>" method="post">
                 <div class="mb-5">
                     <h2 class="h3 text-primary font-weight-normal">
                         Welcome <span class="font-weight-semi-bold">back</span>
@@ -79,22 +79,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 <div class="row align-items-center">
                     <div class="col-6">
-                        <span class="small text-muted">Don't have an
-                            account?</span>
+                        <span class="small text-muted">Don't have an account?</span>
                         <a class="small" href="register.php">Sign up</a>
                     </div>
 
                     <div class="col-6 text-right">
-                        <button type="submit" class="btn btn-primary py-2">Log
-                            in</button>
+                        <button type="submit" class="btn btn-primary py-2">Log in</button>
                     </div>
                 </div>
             </form>
-
-            <?php include 'includes/_error_toast.php'; ?>
         </div>
     </main>
-
+    <?php include 'includes/_error_toast.php'; ?>
     <?php include 'includes/_scripts.php'; ?>
 </body>
 

@@ -1,5 +1,34 @@
 <?php
 session_start();
+
+include_once 'includes/db_connect.php'; // Ensure this file contains the PDO connection setup
+
+$error_message = '';
+
+if (isset($_GET['id'])) {
+    $event_id = $_GET['id'];
+
+    try {
+        // Prepare and execute the query
+        $query = 'SELECT * FROM events WHERE event_id = :event_id';
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':event_id', $event_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            $event_name = htmlspecialchars($row['event_name']);
+            // You can add more fields as needed, e.g., event_desc, event_date, etc.
+        } else {
+            $error_message = 'No such event found';
+        }
+    } catch (PDOException $e) {
+        $error_message = 'Something went wrong: ' . htmlspecialchars($e->getMessage());
+    }
+} else {
+    $error_message = 'No event ID specified';
+}
 ?>
 
 <!DOCTYPE html>
@@ -18,39 +47,26 @@ session_start();
 
     <main>
         <div class="container py-5" style="position: relative;">
-            <?php
-            if (isset($_GET['id'])) {
-                $event_id = $_GET['id'];
+            <?php if ($error_message): ?>
+                <div class="alert alert-danger"><?php echo $error_message; ?></div>
+            <?php else: ?>
+                <h1 class="h3 font-weight-normal mb-4"><?php echo $event_name; ?></h1>
+                <div class="row">
+                    <div class="col">
+                        <!-- Add more event details here as needed -->
+                    </div>
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                        <a href="edit_event.php?id=<?php echo htmlspecialchars($event_id); ?>" class="btn btn-warning btn-sm">
+                            <i class="far fa-edit"></i> Edit
+                        </a>
+                        <a href="delete_event.php?id=<?php echo htmlspecialchars($event_id); ?>" class="btn btn-danger btn-sm">
+                            <i class="far fa-trash-alt"></i> Delete
+                        </a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
-                include 'includes/db_connect.php';
-
-                $result = $db->query("SELECT * FROM events WHERE event_id = '$event_id'");
-                if ($result) {
-                    if ($row = $result->fetch_assoc()) { ?>
-                        <h1 class="h3 font-weight-normal mb-4"><?php echo $row['event_name'] ?></h1>
-                        <div class="row">
-                            <div class="col">
-                                <h3></h3>
-                            </div>
-                            <?php if (isset($_SESSION['user_id'])) { ?>
-                                <a href="edit_event.php?id=<?php echo $row['event_id']; ?>" class="btn btn-warning btn-sm">
-                                    <i class="far fa-edit"></i> Edit
-                                </a>
-                                <a href="delete_event.php?id=<?php echo $row['event_id']; ?>" class="btn btn-danger btn-sm">
-                                    <i class="far fa-trash-alt"></i> Delete
-                                </a>
-                            <?php } ?>
-                        </div>
-            <?php
-                    } else {
-                        $error_message = 'No such event found';
-                    }
-                } else {
-                    $error_message = 'Something went wrong';
-                }
-            } ?>
-
-            <?php include 'includes/_error_toast.php' ?>
+            <?php include 'includes/_error_toast.php'; ?>
         </div>
     </main>
 

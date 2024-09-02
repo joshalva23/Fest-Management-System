@@ -6,8 +6,9 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    include 'includes/db_connect.php';
+    include 'includes/db_connect.php'; // This file now contains PDO connection setup
 
     $full_name = $_POST['first_name'] . ' ' . $_POST['last_name'];
     $email = strtolower(trim($_POST['email']));
@@ -18,34 +19,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (strlen($email) < 11 || substr($email, -12) !== '@rvce.edu.in') {
         $error_message = 'Email must end with @rvce.edu.in';
     } else {
-        // Check if user already exists
-        $stmt = $db->prepare("SELECT email FROM users WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        try {
+            // Check if user already exists
+            $stmt = $pdo->prepare('SELECT email FROM users WHERE email = :email');
+            $stmt->execute(['email' => $email]);
 
-        if ($result->num_rows > 0) {
-            $error_message = 'User already exists with the given email';
-        } else {
-            // Insert new user into the database
-            $hashed_password = password_hash($password, PASSWORD_BCRYPT);
-            $stmt = $db->prepare("INSERT INTO users (email, pass, full_name, phone) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("ssss", $email, $hashed_password, $full_name, $phone);
-            $result = $stmt->execute();
-
-            if ($result) {
-                header('Location: login.php');
-                exit;
+            if ($stmt->rowCount() > 0) {
+                $error_message = 'User already exists with the given email';
             } else {
-                $error_message = 'Registration failed: ' . $db->error;
+                // Insert new user into the database
+                $hashed_password = password_hash($password, PASSWORD_BCRYPT);
+                $stmt = $pdo->prepare('INSERT INTO users (email, pass, full_name, phone) VALUES (:email, :pass, :full_name, :phone)');
+                $result = $stmt->execute([
+                    'email' => $email,
+                    'pass' => $hashed_password,
+                    'full_name' => $full_name,
+                    'phone' => $phone
+                ]);
+
+                if ($result) {
+                    header('Location: login.php');
+                    exit;
+                } else {
+                    $error_message = 'Registration failed.';
+                }
             }
+        } catch (PDOException $e) {
+            $error_message = 'Database error: ' . $e->getMessage();
         }
     }
 }
 ?>
-
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -63,23 +67,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <main>
         <div class="container py-5" style="position: relative;">
-            <form id="registerForm" class="w-lg-50 w-md-75 mx-md-auto" action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" novalidate>
+            <form id="registerForm" class="w-lg-50 w-md-75 mx-md-auto" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" novalidate>
                 <div class="mb-5">
                     <h2 class="h3 text-primary font-weight-normal">
-                        Welcome to <span class="font-weight-semi-bold">Fest
-                            Management</span>
+                        Welcome to <span class="font-weight-semi-bold">Fest Management</span>
                     </h2>
                     <p class="text-muted">Fill out the form to get started.</p>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group col-6">
-                        <label for="first_name" class="form-label">Full
-                            name</label>
+                        <label for="first_name" class="form-label">First name</label>
                         <input type="text" name="first_name" id="first_name" class="form-control" placeholder="First name" autofocus>
                     </div>
                     <div class="form-group col-6">
-                        <label for="last_name" class="form-label">&nbsp;</label>
+                        <label for="last_name" class="form-label">Last name</label>
                         <input type="text" name="last_name" id="last_name" class="form-control" placeholder="Last name">
                     </div>
                 </div>
@@ -103,34 +105,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <div class="custom-control custom-checkbox d-flex align-items-center text-muted">
                         <input type="checkbox" class="custom-control-input" id="terms_checkbox" name="terms_checkbox">
                         <label class="custom-control-label" for="terms_checkbox">
-                            <small>I confirm that the information given in this
-                                form is true, complete and
-                                accurate.</small>
+                            <small>I confirm that the information given in this form is true, complete and accurate.</small>
                         </label>
                     </div>
                 </div>
 
                 <div class="row align-items-center">
                     <div class="col-6">
-                        <span class="small text-muted">Already have an
-                            account?</span>
+                        <span class="small text-muted">Already have an account?</span>
                         <a class="small" href="login.php">Log in</a>
                     </div>
 
                     <div class="col-6 text-right">
-                        <button type="submit" class="btn btn-primary py-2">Get
-                            started</button>
+                        <button type="submit" class="btn btn-primary py-2">Get started</button>
                     </div>
                 </div>
             </form>
-
-            <?php include 'includes/_error_toast.php'; ?>
         </div>
     </main>
-
     <?php include 'includes/_scripts.php'; ?>
+    <?php include 'includes/_error_toast.php'; ?>
     <script>
         $(document).ready(function() {
+            $.validator.addMethod('phoneIN', function(value, element) {
+                return this.optional(element) || /^\d{10}$/.test(value);
+            }, 'Please enter a valid phone number.');
+
+            $.validator.addMethod('lettersonly', function(value, element) {
+                return this.optional(element) || /^[a-zA-Z]+$/.test(value);
+            }, 'Letters only please.');
+
+            $.validator.addMethod('nowhitespace', function(value, element) {
+                return this.optional(element) || /^\S+$/.test(value);
+            }, 'No white space please.');
+
             $('#registerForm').validate({
                 rules: {
                     first_name: {
@@ -149,6 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     },
                     password: {
                         required: true,
+                        minlength: 6 // Minimum length for password
                     },
                     phone: {
                         required: true,
@@ -160,12 +169,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 },
                 messages: {
                     email: {
-                        email: 'Please specify a valid email address.'
+                        email: 'Please specify a valid email address.',
+                        required: 'Email address is required.'
+                    },
+                    password: {
+                        minlength: 'Password must be at least 6 characters long.',
+                        required: 'Password is required.'
+                    },
+                    terms_checkbox: {
+                        required: 'You must agree to the terms.'
                     }
                 }
-            })
-
-        })
+            });
+        });
     </script>
 </body>
 
