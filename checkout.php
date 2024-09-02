@@ -14,6 +14,7 @@ if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_SESSION['cart'])) {
     include 'includes/db_connect.php'; // Ensure this file sets up PDO for PostgreSQL
+    include 'includes/_email_helper.php'; // Include the file with the function
 
     $participant_name = trim($_POST['participant_name']);
     $participant_email = trim($_POST['participant_email']);
@@ -29,15 +30,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_SESSION['cart'])) {
         $stmt->execute([$participant_name, $participant_email, $participant_phone, $registered_by]);
         $participant_id = $pdo->lastInsertId();
 
+        // Prepare message body
+        $message_body = "Dear " . htmlspecialchars($participant_name) . ",\r\n\r\nThank you for registering for the fest. Your registration has been confirmed for";
+
         // Insert registrations
         foreach ($_SESSION['cart'] as $event_id => $event) {
             $sql = "INSERT INTO registrations (participant_id, event_id) VALUES (?, ?)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$participant_id, $event_id]);
+            // Add event details to the message body
+            $message_body .= ' ' . htmlspecialchars($event['event_name']) . ',';
         }
+
+        // Remove trailing comma and add closing line
+        $message_body = rtrim($message_body, ',') . ".\r\n\r\nBest regards,\r\nThe Team";
 
         $pdo->commit();
         unset($_SESSION['cart']);
+
+        // Send confirmation email via Flask
+        try {
+            sendEmailConfirmationAsync(
+                $participant_email,
+                'Registration Confirmation',
+                $message_body
+            );
+            echo 'Email sent successfully.';
+        } catch (Exception $e) {
+            echo 'Error sending email: ' . $e->getMessage();
+        }
+
         header('Location: registrations.php');
         exit;
     } catch (PDOException $e) {
