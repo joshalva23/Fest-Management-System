@@ -58,8 +58,8 @@ function time_elapsed_string($datetime, $full = false)
 
 
 include 'includes/db_connect.php';
+include 'includes/_defaults.php';
 
-$goal = 10000;
 $user_id = $_SESSION['user_id'];
 
 // Initialize variables
