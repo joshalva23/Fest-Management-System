@@ -7,3 +7,5 @@ unset($_SESSION['user_id'], $_SESSION['user_name'], $_SESSION['cart'], $_SESSION
 unset($_SESSION['organiser_id'], $_SESSION['organiser_name']);
 header('Location: index.php');
 
+
+

@@ -218,3 +218,5 @@ if (isset($_GET['id'])) {
     header('Location: events.php');
     exit;
 }
+
+

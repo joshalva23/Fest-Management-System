@@ -38,3 +38,5 @@ if (isset($_POST['type']) && isset($_POST['event_id'])) {
         // header('Location: error_page.php?error=' . urlencode($error_message));
     }
 }
+
+
