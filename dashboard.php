@@ -259,7 +259,7 @@ try {
                         <hr class="mt-3 mb-4">
                         
                         <div class="overflow-hidden">
-                            <div class="js-scrollbar pr-3" style="max-height: 250px;">
+                            <div class="js-scrollbar pr-3" style="max-height: 500px;">
                                 <ul class="list-unstyled u-indicator-vertical-dashed">
                                     <?php
                                     try {

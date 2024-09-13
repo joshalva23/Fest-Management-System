@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_SESSION['cart'])) {
         }
 
         // Remove trailing comma and add closing line
-        $message_body = rtrim($message_body, ',') . ".\r\n\r\nBest regards,\r\nThe Team";
+        $message_body = rtrim($message_body, ',') . ".\r\n\r\nBest regards,\r\nThe Team\r\nDo not respond to this!";
 
         $pdo->commit();
         unset($_SESSION['cart']);

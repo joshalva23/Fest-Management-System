@@ -44,26 +44,29 @@ $error_message = isset($_GET['err']) ? htmlspecialchars($_GET['err']) : '';
                                             <h4 class="h6">
                                                 <a href="view_event.php?id=<?php echo htmlspecialchars($row['event_id']); ?>"><?php echo htmlspecialchars($row['event_name']); ?></a>
                                             </h4>
+                                            <?php if (isset($_SESSION['user_id'])) { ?>
                                             <div class="dropdown">
                                                 <button class="btn btn-sm btn-icon btn-light bg-white border-0" type="button" data-toggle="dropdown">
                                                     <i class="fas fa-ellipsis-h"></i>
                                                 </button>
                                                 <div class="dropdown-menu dropdown-menu-right border-0 shadow-sm">
-                                                    <?php if (isset($_SESSION['user_id'])) { ?>
+                                                    
                                                         <a href="edit_event.php?id=<?php echo htmlspecialchars($row['event_id']); ?>" class="dropdown-item">
                                                             <small class="fas fa-edit dropdown-item-icon"></small> Edit
                                                         </a>
-                                                    <?php } ?>
+                                                    
                                                     <a href="delete_event.php?id=<?php echo htmlspecialchars($row['event_id']); ?>" class="dropdown-item">
                                                         <small class="fas fa-trash-alt dropdown-item-icon"></small> Delete
                                                     </a>
                                                     <a href="#" class="dropdown-item">Link 3</a>
                                                 </div>
                                             </div>
+                                            <?php } ?>
                                             &nbsp;
+                                            
                                             <h6 class="card-subtitle mb-2 text-muted">&#8377; <?= htmlspecialchars($row['event_fee']) ?> - <?= htmlspecialchars($row['event_type']) ?></h6>
                                             &nbsp;
-                                            <p class="card-text overflow-hidden" style="height: 48px;padding-left:5px;padding-right:0;">
+                                            <p class="card-text overflow-hidden" style="height:48px;padding-left:5px;padding-right:0;">
                                                 <?= htmlspecialchars($row['event_desc']) ?>
                                             </p>
                                         </div>
